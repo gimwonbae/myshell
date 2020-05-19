@@ -7,19 +7,28 @@
 #define BUFSIZE 1024
 #define WORD 128
 
+int arrayShift(char* arg[], char* newarg[], int size, int num){
+  for(int i =0; i < size-num; i++){
+    newarg[i] = arg[i+num];
+  }
+  arg[num] = NULL;
+  newarg[size-num] = NULL;
+  return size-num;
+}
+
 void fatal(const char *str, int errcode){
   perror(str);
   exit(errcode);
 }
 
-int parsing(char buffer[], char* arg[], int argn){
-  char* ptr = strtok(buffer, " \t\r\n");
+int parsing(char buffer[], char* condition, char* arg[], int argn){
+  char* ptr = strtok(buffer, condition);
 
   while (ptr != NULL && argn < WORD){
     arg[argn] = ptr;
     // printf("arg[%d] : %s\n", argn, arg[argn]);
     argn++;
-    ptr = strtok(NULL, " \t\r\n");
+    ptr = strtok(NULL, condition);
   }
 
   return argn;
@@ -59,6 +68,7 @@ void run(char* arg[], int background){
 int main(void) {
   char buffer[BUFSIZE];
   char* arg[WORD];
+  char* newBuffer[BUFSIZE];
 
   while (1) {
     int argn = 0;
@@ -73,17 +83,28 @@ int main(void) {
 
     background = isBackground(buffer);
 
-    argn = parsing(buffer, arg, argn);
+    argn = parsing(buffer, ' /t/s/n', arg, argn);
 
-    for(int i = 0; i < argn; i++){
-      printf("arg[%d] : %s\n", i, arg[i]);
-    }
+    // for(int i = 0; i < argn; i++){
+    //   printf("arg[%d] : %s\n", i, arg[i]);
+    // }
 
     if (argn == 0){
       continue;
     }
+    for (int i = 0; i < argn; i++){
+      if(strchr(arg[i], ';')){
+        // int cknum = arrayShift(arg,newarg,argn,i+1);
+        // newBuffer = parsing();
+        run(arg, background);
+        //memcpy(arg, newarg, cknum-1);
+        // arg[cknum] = NULL;
+      }
+      else{
+        run(arg, background);
+      }
+    }
 
-    run(arg, background);
     // printf("%d\n", background);
   }
   return 0;
