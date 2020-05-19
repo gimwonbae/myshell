@@ -7,6 +7,11 @@
 #define BUFSIZE 1024
 #define WORD 128
 
+void fatal(const char *str, int errcode){
+  perror(str);
+  exit(errcode);
+}
+
 int parsing(char buffer[], char* arg[], int argn){
   char* ptr = strtok(buffer, " \t\r\n");
 
@@ -20,17 +25,35 @@ int parsing(char buffer[], char* arg[], int argn){
   return argn;
 }
 
-int isBackground(char* arg[], int argn){
-  int background = 0;
-  for (int i = 0; i < argn; i++){
-    for(int j = 0; j < strlen(arg[i]); j++){
-      if (arg[i][j] == '&'){
-        background = 1;
-        arg[i][j] = '\0';
-      }
+int isBackground(char* buffer){
+  for (int i = 0; i < strlen(buffer); i++){
+    if(buffer[i] == '&'){
+      buffer[i] = ' ';
+      return 1;
     }
   }
-  return background;
+  return 0;
+}
+
+void run(char* arg[], int background){
+  pid_t pid;
+  int status;
+
+  pid = fork();
+  if(pid == -1){
+    fatal("fork error",1);
+  }
+  else if(pid == 0){
+    execvp(arg[0],arg);
+  }
+  else{
+    if(background == 0){
+      wait(&status);
+    }
+    else {
+      waitpid(pid,&status,WNOHANG);
+    }
+  }
 }
 
 int main(void) {
@@ -48,18 +71,19 @@ int main(void) {
     fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
 
+    background = isBackground(buffer);
+
     argn = parsing(buffer, arg, argn);
 
-    background = isBackground(arg, argn);
-
-    // for(int i = 0; i < argn; i++){
-    //   printf("arg[%d] : %s\n", i, arg[i]);
-    // }
+    for(int i = 0; i < argn; i++){
+      printf("arg[%d] : %s\n", i, arg[i]);
+    }
 
     if (argn == 0){
       continue;
     }
 
+    run(arg, background);
     // printf("%d\n", background);
   }
   return 0;
