@@ -21,7 +21,10 @@ int parsing(char buffer[], char* delimiter, char* arg[], int argn){
     argn++;
     ptr = strtok(NULL, delimiter);
   }
-
+  // if (strcmp(arg[argn-1],"")){
+  //   arg[argn-1] = NULL;
+  //   argn--;
+  // }
   return argn;
 }
 
@@ -103,11 +106,12 @@ int main(void) {
     background = isBackground(buffer);
 
     if(strchr(buffer, ';')){
-      newArgn = parsing(buffer, ";", newArg, newArgn);
-      // for(int i = 0; i < newArgn; i++){
-      //   printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
-      // }
+      newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
       for(int i = 0; i < newArgn; i++){
+        // printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
+      }
+      for(int i = 0; i < newArgn; i++){
+        memset(arg,'\0',sizeof(arg));
         argn = 0;
         argn = parsing(newArg[i], " \t\r\n", arg, argn);
         run(arg, background, argn);
