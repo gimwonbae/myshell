@@ -50,6 +50,10 @@ void cdCommand(char* arg[], int argn){
   }
 }
 
+void historyCommand(){
+
+}
+
 void run(char* arg[], int background, int argn){
   pid_t pid;
   int status;
@@ -81,6 +85,7 @@ int main(void) {
   char buffer[BUFSIZE];
   char* arg[WORD];
   char* newArg[WORD];
+  char* history[BUFSIZE];
 
   while (1) {
     int argn = 0;
@@ -91,7 +96,7 @@ int main(void) {
     memset(newArg,'\0',sizeof(arg));
     memset(buffer,'\0',sizeof(buffer));
 
-    printf("%s> ",getcwd(NULL, WORD));
+    printf("%s$ ",getcwd(NULL, BUFSIZE));
     // fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
 
@@ -102,7 +107,7 @@ int main(void) {
       // for(int i = 0; i < newArgn; i++){
       //   printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
       // }
-      for(int i = 0; i < newArgn-1; i++){
+      for(int i = 0; i < newArgn; i++){
         argn = 0;
         argn = parsing(newArg[i], " \t\r\n", arg, argn);
         run(arg, background, argn);
