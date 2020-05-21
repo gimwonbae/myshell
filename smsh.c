@@ -35,23 +35,44 @@ int isBackground(char* buffer){
   return 0;
 }
 
-void run(char* arg[], int background){
+void cdCommand(char* arg[], int argn){
+  // printf("argn : %d \n", argn);
+  if(argn == 1){
+    chdir(getenv("HOME"));
+  }
+  else if(argn == 2){
+    if(chdir(arg[1]) == -1){
+      printf("%s : No such file or directory", arg[1]);
+    }
+  }
+  else{
+    printf("cd [directory name]\n");
+  }
+}
+
+void run(char* arg[], int background, int argn){
   pid_t pid;
   int status;
 
-  pid = fork();
-  if(pid == -1){
-    fatal("fork error",1);
+  if(strcmp(arg[0],"cd") == 0){
+    cdCommand(arg, argn);
   }
-  else if(pid == 0){
-    execvp(arg[0],arg);
-  }
+
   else{
-    if(background == 0){
-      wait(&status);
+    pid = fork();
+    if(pid == -1){
+      fatal("fork error",1);
     }
-    else {
-      waitpid(pid,&status,WNOHANG);
+    else if(pid == 0){
+      execvp(arg[0],arg);
+    }
+    else{
+      if(background == 0){
+        wait(&status);
+      }
+      else {
+        waitpid(pid,&status,WNOHANG);
+      }
     }
   }
 }
@@ -70,12 +91,12 @@ int main(void) {
     memset(newArg,'\0',sizeof(arg));
     memset(buffer,'\0',sizeof(buffer));
 
-    fputs("smsh> ",stdout);
+    printf("%s> ",getcwd(NULL, WORD));
     // fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
 
     background = isBackground(buffer);
-    
+
     if(strchr(buffer, ';')){
       newArgn = parsing(buffer, ";", newArg, newArgn);
       // for(int i = 0; i < newArgn; i++){
@@ -84,13 +105,13 @@ int main(void) {
       for(int i = 0; i < newArgn-1; i++){
         argn = 0;
         argn = parsing(newArg[i], " \t\r\n", arg, argn);
-        run(arg, background);
+        run(arg, background, argn);
       }
     }
 
     else{
       argn = parsing(buffer, " \t\r\n", arg, argn);
-      run(arg, background);
+      run(arg, background, argn);
     }
     
     // for(int i = 0; i < argn; i++){
