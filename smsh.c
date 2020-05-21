@@ -21,10 +21,6 @@ int parsing(char buffer[], char* delimiter, char* arg[], int argn){
     argn++;
     ptr = strtok(NULL, delimiter);
   }
-  // if (strcmp(arg[argn-1],"")){
-  //   arg[argn-1] = NULL;
-  //   argn--;
-  // }
   return argn;
 }
 
@@ -45,16 +41,12 @@ void cdCommand(char* arg[], int argn){
   }
   else if(argn == 2){
     if(chdir(arg[1]) == -1){
-      printf("%s : No such file or directory", arg[1]);
+      printf("%s : No such file or directory\n", arg[1]);
     }
   }
   else{
-    printf("cd [directory name]\n");
+    printf("too many argument\n");
   }
-}
-
-void historyCommand(){
-
 }
 
 void run(char* arg[], int background, int argn){
@@ -88,7 +80,6 @@ int main(void) {
   char buffer[BUFSIZE];
   char* arg[WORD];
   char* newArg[WORD];
-  char* history[BUFSIZE];
 
   while (1) {
     int argn = 0;
