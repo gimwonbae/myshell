@@ -7,6 +7,16 @@
 #define BUFSIZE 1024
 #define WORD 128
 
+void fatal(const char *str, int errcode);
+int parsing(char buffer[], char* delimiter, char* arg[], int argn);
+int isBackground(char* buffer);
+void cdCommand(char* arg[], int argn);
+void historyCmd(char* arg[], int argn, char* history[]);
+void historyNum(char* arg[], int argn, int background, char* history[], int* historyCnt);
+void run(char* arg[], int background, int argn, char* history[],  int* historyCnt);
+void multiCmd(char buffer[], int background, char* history[], int* historyCnt);
+void loop(char buffer[], int background, char* history[], int* historyCnt);
+
 void fatal(const char *str, int errcode){
   perror(str);
   exit(errcode);
@@ -50,7 +60,7 @@ void cdCommand(char* arg[], int argn){
 void historyCmd(char* arg[], int argn, char* history[]){
   if(argn == 1){
     for(int i = 0; history[i] != NULL; i++){
-      printf(" %d %s", i+1, history[i]);
+      printf(" %d %s\n", i+1, history[i]);
     }
   }
   else{
@@ -58,9 +68,32 @@ void historyCmd(char* arg[], int argn, char* history[]){
   }
 }
 
-void run(char* arg[], int background, int argn, char* history[]){
+void historyNum(char* arg[], int argn, int background, char* history[], int* historyCnt){
+  if(argn == 1){
+    arg[0]++;
+    if(atoi(arg[0]) != 0){
+      if(atoi(arg[0]) >= *historyCnt){
+        printf("not found\n");
+        (*historyCnt)--;
+      }
+      else{
+        (*historyCnt)--;
+        loop(history[atoi(arg[0])-1], background, history, historyCnt);
+      }
+    }
+    else{
+      printf("should !number \n");
+    }
+  }
+  else{
+    printf("too many argument");
+  }
+}
+
+void run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
   pid_t pid;
   int status;
+  char* ptr;
 
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
@@ -68,6 +101,10 @@ void run(char* arg[], int background, int argn, char* history[]){
 
   else if(strcmp(arg[0],"history") == 0){
     historyCmd(arg, argn, history);
+  }
+
+  else if(arg[0] == strchr(arg[0], '!')){
+    historyNum(arg, argn, background, history, historyCnt);
   }
 
   else{
@@ -89,7 +126,7 @@ void run(char* arg[], int background, int argn, char* history[]){
   }
 }
 
-void multiCmd(char buffer[], int background, char* history[]){
+void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
   char* arg[WORD];
   char* newArg[WORD];
 
@@ -105,26 +142,32 @@ void multiCmd(char buffer[], int background, char* history[]){
     memset(arg,'\0',sizeof(arg));
     argn = 0;
     argn = parsing(newArg[i], " \t\r\n", arg, argn);
-    run(arg, background, argn, history);
+    run(arg, background, argn, history, historyCnt);
   }
 }
 
-void loop(char buffer[], int background, char* history[]){
+void loop(char buffer[], int background, char* history[], int* historyCnt){
   char* arg[WORD];
   char* newArg[WORD];
 
   memset(arg,'\0',sizeof(arg));
   memset(newArg,'\0',sizeof(arg));
 
+  history[*historyCnt] = (char *)malloc(sizeof(char) * strlen(buffer) + 1);
+  memset(history[*historyCnt],'\0',(sizeof(char) * strlen(buffer) + 1));
+  history[*historyCnt+1] = NULL;
+  strcpy(history[*historyCnt], buffer);
+  (*historyCnt)++;
+
   int argn = 0;
   int newArgn = 0;
   if(strchr(buffer, ';')){
-    multiCmd(buffer,background,history);
+    multiCmd(buffer,background,history, historyCnt);
   }
 
   else{
     argn = parsing(buffer, " \t\r\n", arg, argn);
-    run(arg, background, argn, history);
+    run(arg, background, argn, history, historyCnt);
   }
 }
 
@@ -151,15 +194,9 @@ int main(void) {
       continue;
     }
 
-    history[historyCnt] = (char *)malloc(sizeof(char) * strlen(buffer) + 1);
-    memset(history[historyCnt],'\0',(sizeof(char) * strlen(buffer) + 1));
-    history[historyCnt+1] = NULL;
-    strcpy(history[historyCnt], buffer);
-    historyCnt++;
-
     background = isBackground(buffer);
     
-    loop(buffer,background,history);
+    loop(buffer,background,history,&historyCnt);
   }
   return 0;
 }
