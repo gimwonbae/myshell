@@ -119,15 +119,24 @@ void loop(char buffer[], int background){
 
 int main(void) {
   char buffer[BUFSIZE];
-
+  char buffer2[BUFSIZE];
+  char* arg[WORD];
   while (1) {
     int background = 0;
+    int argn = 0;
 
     memset(buffer,'\0',sizeof(buffer));
+    memset(arg,'\0',sizeof(arg));
 
     printf("%s$ ",getcwd(NULL, BUFSIZE));
     // fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
+    strcpy(buffer2,buffer);
+
+    argn = parsing(buffer2," \t\r\n", arg, argn);
+    if (argn == 0){
+      continue;
+    }
 
     background = isBackground(buffer);
     
