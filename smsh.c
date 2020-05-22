@@ -49,12 +49,27 @@ void cdCommand(char* arg[], int argn){
   }
 }
 
-void run(char* arg[], int background, int argn){
+void historyCmd(char* arg[], int argn, char* history[]){
+  if(argn == 1){
+    for(int i = 0; history[i] != NULL; i++){
+      printf(" %d %s", i+1, history[i]);
+    }
+  }
+  else{
+    printf("too many argument");
+  }
+}
+
+void run(char* arg[], int background, int argn, char* history[]){
   pid_t pid;
   int status;
 
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
+  }
+
+  else if(strcmp(arg[0],"history") == 0){
+    historyCmd(arg, argn, history);
   }
 
   else{
@@ -65,7 +80,7 @@ void run(char* arg[], int background, int argn){
     else if(pid == 0){
       execvp(arg[0],arg);
     }
-    else{
+   else{
       if(background == 0){
         wait(&status);
       }
@@ -76,7 +91,7 @@ void run(char* arg[], int background, int argn){
   }
 }
 
-void multiCmd(char buffer[], int background){
+void multiCmd(char buffer[], int background, char* history[]){
   char* arg[WORD];
   char* newArg[WORD];
 
@@ -94,11 +109,11 @@ void multiCmd(char buffer[], int background){
     memset(arg,'\0',sizeof(arg));
     argn = 0;
     argn = parsing(newArg[i], " \t\r\n", arg, argn);
-    run(arg, background, argn);
+    run(arg, background, argn, history);
   }
 }
 
-void loop(char buffer[], int background){
+void loop(char buffer[], int background, char* history[]){
   char* arg[WORD];
   char* newArg[WORD];
 
@@ -108,42 +123,54 @@ void loop(char buffer[], int background){
   int argn = 0;
   int newArgn = 0;
   if(strchr(buffer, ';')){
-    multiCmd(buffer,background);
+    multiCmd(buffer,background,history);
   }
 
   else{
     argn = parsing(buffer, " \t\r\n", arg, argn);
-    run(arg, background, argn);
+    run(arg, background, argn, history);
   }
 }
 
 int main(void) {
   char buffer[BUFSIZE];
   char buffer2[BUFSIZE];
+  char *history[BUFSIZE];
   char* arg[WORD];
+  int historyCnt = 0;
+
   while (1) {
     int background = 0;
     int argn = 0;
 
     memset(buffer,'\0',sizeof(buffer));
     memset(arg,'\0',sizeof(arg));
+    // memset(history,'\0',sizeof(history));
 
     printf("%s$ ",getcwd(NULL, BUFSIZE));
     // fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
+    
     strcpy(buffer2,buffer);
-
     argn = parsing(buffer2," \t\r\n", arg, argn);
     if (argn == 0){
       continue;
     }
+
+    history[historyCnt] = (char *)malloc(sizeof(char) * strlen(buffer) + 1);
+    memset(history[historyCnt],'\0',(sizeof(char) * strlen(buffer) + 1));
+    history[historyCnt+1] = NULL;
+    
+    strcpy(history[historyCnt], buffer);
+    // printf("history[%d] = %s", historyCnt, history[historyCnt]);
+    historyCnt++;
 
     background = isBackground(buffer);
     
     // for(int i = 0; i < argn; i++){
     //   printf("arg[%d] : %s\n", i, arg[i]);
     // }
-    loop(buffer,background);
+    loop(buffer,background,history);
 
     // printf("%d\n", background);
   }
