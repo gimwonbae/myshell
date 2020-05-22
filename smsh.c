@@ -76,18 +76,53 @@ void run(char* arg[], int background, int argn){
   }
 }
 
-int main(void) {
-  char buffer[BUFSIZE];
+void multiCmd(char buffer[], int background){
   char* arg[WORD];
   char* newArg[WORD];
 
+  memset(arg,'\0',sizeof(arg));
+  memset(newArg,'\0',sizeof(arg));
+
+  int argn = 0;
+  int newArgn = 0;
+
+  newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
+  // for(int i = 0; i < newArgn; i++){
+  // printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
+  // }
+  for(int i = 0; i < newArgn; i++){
+    memset(arg,'\0',sizeof(arg));
+    argn = 0;
+    argn = parsing(newArg[i], " \t\r\n", arg, argn);
+    run(arg, background, argn);
+  }
+}
+
+void loop(char buffer[], int background){
+  char* arg[WORD];
+  char* newArg[WORD];
+
+  memset(arg,'\0',sizeof(arg));
+  memset(newArg,'\0',sizeof(arg));
+
+  int argn = 0;
+  int newArgn = 0;
+  if(strchr(buffer, ';')){
+    multiCmd(buffer,background);
+  }
+
+  else{
+    argn = parsing(buffer, " \t\r\n", arg, argn);
+    run(arg, background, argn);
+  }
+}
+
+int main(void) {
+  char buffer[BUFSIZE];
+
   while (1) {
-    int argn = 0;
-    int newArgn = 0;
     int background = 0;
 
-    memset(arg,'\0',sizeof(arg));
-    memset(newArg,'\0',sizeof(arg));
     memset(buffer,'\0',sizeof(buffer));
 
     printf("%s$ ",getcwd(NULL, BUFSIZE));
@@ -95,32 +130,11 @@ int main(void) {
     fgets(buffer, BUFSIZE, stdin);
 
     background = isBackground(buffer);
-
-    if(strchr(buffer, ';')){
-      newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
-      for(int i = 0; i < newArgn; i++){
-        // printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
-      }
-      for(int i = 0; i < newArgn; i++){
-        memset(arg,'\0',sizeof(arg));
-        argn = 0;
-        argn = parsing(newArg[i], " \t\r\n", arg, argn);
-        run(arg, background, argn);
-      }
-    }
-
-    else{
-      argn = parsing(buffer, " \t\r\n", arg, argn);
-      run(arg, background, argn);
-    }
     
     // for(int i = 0; i < argn; i++){
     //   printf("arg[%d] : %s\n", i, arg[i]);
     // }
-
-    if (argn == 0){
-      continue;
-    }
+    loop(buffer,background);
 
     // printf("%d\n", background);
   }
