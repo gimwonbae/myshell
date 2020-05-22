@@ -17,7 +17,6 @@ int parsing(char buffer[], char* delimiter, char* arg[], int argn){
 
   while (ptr != NULL && argn < WORD){
     arg[argn] = ptr;
-    // printf("arg[%d] : %s\n", argn, arg[argn]);
     argn++;
     ptr = strtok(NULL, delimiter);
   }
@@ -35,7 +34,6 @@ int isBackground(char* buffer){
 }
 
 void cdCommand(char* arg[], int argn){
-  // printf("argn : %d \n", argn);
   if(argn == 1){
     chdir(getenv("HOME"));
   }
@@ -102,9 +100,7 @@ void multiCmd(char buffer[], int background, char* history[]){
   int newArgn = 0;
 
   newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
-  // for(int i = 0; i < newArgn; i++){
-  // printf("newarg[%d] : %s, newargn = %d\n", i, newArg[i], newArgn);
-  // }
+  
   for(int i = 0; i < newArgn; i++){
     memset(arg,'\0',sizeof(arg));
     argn = 0;
@@ -145,10 +141,8 @@ int main(void) {
 
     memset(buffer,'\0',sizeof(buffer));
     memset(arg,'\0',sizeof(arg));
-    // memset(history,'\0',sizeof(history));
-
+    
     printf("%s$ ",getcwd(NULL, BUFSIZE));
-    // fflush(stdout);
     fgets(buffer, BUFSIZE, stdin);
     
     strcpy(buffer2,buffer);
@@ -160,19 +154,12 @@ int main(void) {
     history[historyCnt] = (char *)malloc(sizeof(char) * strlen(buffer) + 1);
     memset(history[historyCnt],'\0',(sizeof(char) * strlen(buffer) + 1));
     history[historyCnt+1] = NULL;
-    
     strcpy(history[historyCnt], buffer);
-    // printf("history[%d] = %s", historyCnt, history[historyCnt]);
     historyCnt++;
 
     background = isBackground(buffer);
     
-    // for(int i = 0; i < argn; i++){
-    //   printf("arg[%d] : %s\n", i, arg[i]);
-    // }
     loop(buffer,background,history);
-
-    // printf("%d\n", background);
   }
   return 0;
 }
