@@ -75,7 +75,7 @@ void historyNum(char* arg[], int argn, char* history[], int* historyCnt){
     arg[0]++;
     if(atoi(arg[0]) != 0){
       (*historyCnt)--;
-      if(atoi(arg[0]) >= *historyCnt){
+      if(atoi(arg[0]) > *historyCnt){
         printf("not found\n");
       }
       else{
@@ -150,7 +150,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
     return 0;
-  }  
+  }
   if((pid = fork()) == -1){
     fatal("fork error",1);
   }
