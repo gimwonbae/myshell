@@ -98,46 +98,47 @@ void historyNum(char* arg[], int argn, char* history[], int* historyCnt){
 void isRedirect(char* arg[], int argn){
   int fd;
   for(int i = 0; i < argn; i++){
-    if(strcmp(arg[i],">")){
+    if(strcmp(arg[i],">") == 0){
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
-        fatal("redirect open error", 1);
+        fatal("redirect > open error", 1);
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
+      printf("arg[%d] = arg[%s], arg[%d] = arg[%s]", i, arg[i], i+1, arg[i+1]);
       arg[i] = NULL;
       break;
     }
-    else if(strcmp(arg[i],">>")){
+    else if(strcmp(arg[i],">>") == 0){
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_APPEND, 0644)) < 0){
-        fatal("redirect open error", 1);
+        fatal("redirect >> open error", 1);
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
       arg[i] = NULL;
       break;      
     }
-    else if(strcmp(arg[i],"<")){
+    else if(strcmp(arg[i],"<") == 0){
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT, 0644)) < 0){
-        fatal("redirect open error", 1);
+        fatal("redirect < open error", 1);
       }
       dup2(fd, STDIN_FILENO);
       close(fd);
       arg[i] = NULL;
       break;      
     }
-    else if(strcmp(arg[i],"<<")){
+    else if(strcmp(arg[i],"<<") == 0){
       
     }
-    else if(strcmp(arg[i],"2>")){
+    else if(strcmp(arg[i],"2>") == 0){
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
-        fatal("redirect open error", 1);
+        fatal("redirect 2> open error", 1);
       }
       dup2(fd, STDERR_FILENO);
       close(fd);
       arg[i] = NULL;
       break;      
     }
-    else if(strcmp(arg[i],">|")){
+    else if(strcmp(arg[i],">|") == 0){
       
     }
   }
@@ -155,6 +156,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
     fatal("fork error",1);
   }
   else if(pid == 0){
+    isRedirect(arg, argn);
     if(strcmp(arg[0],"history") == 0){
       historyCmd(arg, argn, history);
     }
