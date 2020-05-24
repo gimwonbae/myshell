@@ -13,10 +13,10 @@ int parsing(char buffer[], char* delimiter, char* arg[], int argn);
 int isBackground(char* buffer);
 void cdCommand(char* arg[], int argn);
 void historyCmd(char* arg[], int argn, char* history[]);
-void historyNum(char* arg[], int argn, int background, char* history[], int* historyCnt);
-void run(char* arg[], int background, int argn, char* history[],  int* historyCnt);
+void historyNum(char* arg[], int argn, char* history[], int* historyCnt);
+int run(char* arg[], int background, int argn, char* history[],  int* historyCnt);
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt);
-void loop(char buffer[], int background, char* history[], int* historyCnt);
+void loop(char buffer[], char* history[], int* historyCnt);
 void isRedirect(char* arg[], int argn);
 
 void fatal(const char *str, int errcode){
@@ -62,7 +62,7 @@ void cdCommand(char* arg[], int argn){
 void historyCmd(char* arg[], int argn, char* history[]){
   if(argn == 1){
     for(int i = 0; history[i] != NULL; i++){
-      printf(" %d %s\n", i+1, history[i]);
+      printf(" %d %s", i+1, history[i]);
     }
   }
   else{
@@ -70,17 +70,20 @@ void historyCmd(char* arg[], int argn, char* history[]){
   }
 }
 
-void historyNum(char* arg[], int argn, int background, char* history[], int* historyCnt){
+void historyNum(char* arg[], int argn, char* history[], int* historyCnt){
   if(argn == 1){
     arg[0]++;
     if(atoi(arg[0]) != 0){
+      (*historyCnt)--;
       if(atoi(arg[0]) >= *historyCnt){
         printf("not found\n");
-        (*historyCnt)--;
       }
       else{
-        (*historyCnt)--;
-        loop(history[atoi(arg[0])-1], background, history, historyCnt);
+        char* record = (char *)malloc(sizeof(char) * strlen(history[atoi(arg[0])-1]) + 1);
+        memset(record,'\0',(sizeof(char) * strlen(history[atoi(arg[0])-1]) + 1));
+        strcpy(record,history[atoi(arg[0])-1]);
+        loop(history[atoi(arg[0])-1], history, historyCnt);
+        strcpy(history[atoi(arg[0])-1],record);
       }
     }
     else{
@@ -101,7 +104,7 @@ void isRedirect(char* arg[], int argn){
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
-      arg[i] = '\0';
+      arg[i] = NULL;
       break;
     }
     else if(strcmp(arg[i],">>")){
@@ -110,7 +113,7 @@ void isRedirect(char* arg[], int argn){
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
-      arg[i] = '\0';
+      arg[i] = NULL;
       break;      
     }
     else if(strcmp(arg[i],"<")){
@@ -119,7 +122,7 @@ void isRedirect(char* arg[], int argn){
       }
       dup2(fd, STDIN_FILENO);
       close(fd);
-      arg[i] = '\0';
+      arg[i] = NULL;
       break;      
     }
     else if(strcmp(arg[i],"<<")){
@@ -131,7 +134,7 @@ void isRedirect(char* arg[], int argn){
       }
       dup2(fd, STDERR_FILENO);
       close(fd);
-      arg[i] = '\0';
+      arg[i] = NULL;
       break;      
     }
     else if(strcmp(arg[i],">|")){
@@ -140,40 +143,35 @@ void isRedirect(char* arg[], int argn){
   }
 }
 
-void run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
+int run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
   pid_t pid;
   int status;
   char* ptr;
-
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
+    return 0;
+  }  
+  if((pid = fork()) == -1){
+    fatal("fork error",1);
   }
-
-  else if(strcmp(arg[0],"history") == 0){
-    historyCmd(arg, argn, history);
+  else if(pid == 0){
+    if(strcmp(arg[0],"history") == 0){
+      historyCmd(arg, argn, history);
+    }
+    else if(arg[0] == strchr(arg[0], '!')){
+      historyNum(arg, argn, history, historyCnt);
+    }
+    execvp(arg[0],arg);
   }
-
-  else if(arg[0] == strchr(arg[0], '!')){
-    historyNum(arg, argn, background, history, historyCnt);
-  }
-
   else{
-    pid = fork();
-    if(pid == -1){
-      fatal("fork error",1);
+    if(background == 0){
+      wait(&status);
     }
-    else if(pid == 0){
-      execvp(arg[0],arg);
-    }
-   else{
-      if(background == 0){
-        wait(&status);
-      }
-      else {
-        waitpid(pid,&status,WNOHANG);
-      }
+    else {
+      waitpid(pid,&status,WNOHANG);
     }
   }
+  return 0;
 }
 
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
@@ -196,21 +194,22 @@ void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
   }
 }
 
-void loop(char buffer[], int background, char* history[], int* historyCnt){
+void loop(char buffer[], char* history[], int* historyCnt){
   char* arg[WORD];
-  char* newArg[WORD];
+
+  int argn = 0;
 
   memset(arg,'\0',sizeof(arg));
-  memset(newArg,'\0',sizeof(arg));
 
   history[*historyCnt] = (char *)malloc(sizeof(char) * strlen(buffer) + 1);
   memset(history[*historyCnt],'\0',(sizeof(char) * strlen(buffer) + 1));
   history[*historyCnt+1] = NULL;
   strcpy(history[*historyCnt], buffer);
+
   (*historyCnt)++;
 
-  int argn = 0;
-  int newArgn = 0;
+  int background = isBackground(buffer);
+
   if(strchr(buffer, ';')){
     multiCmd(buffer,background,history, historyCnt);
   }
@@ -243,10 +242,8 @@ int main(void) {
     if (argn == 0){
       continue;
     }
-
-    background = isBackground(buffer);
-    
-    loop(buffer,background,history,&historyCnt);
+  
+    loop(buffer,history,&historyCnt);
   }
   return 0;
 }
