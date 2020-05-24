@@ -4,6 +4,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #define BUFSIZE 1024
 #define WORD 128
@@ -117,7 +119,7 @@ void isRedirect(char* arg[], int argn){
       break;      
     }
     else if(strcmp(arg[i],"<") == 0){
-      if((fd = open(arg[i+1], O_WRONLY | O_CREAT, 0644)) < 0){
+      if((fd = open(arg[i+1], O_RDONLY | O_CREAT, 0644)) < 0){
         fatal("redirect < open error", 1);
       }
       dup2(fd, STDIN_FILENO);
@@ -146,7 +148,9 @@ void isRedirect(char* arg[], int argn){
 int run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
   pid_t pid;
   int status;
-
+  if (argn == 0){
+    return 0;
+  }
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
     return 0;
@@ -181,13 +185,14 @@ void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
 
   memset(newArg,'\0',sizeof(arg));
   int newArgn = 0;
-
+  
   newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
   
   for(int i = 0; i < newArgn; i++){
     memset(arg,'\0',sizeof(arg));
     int argn = 0;
     argn = parsing(newArg[i], " \t\r\n", arg, argn);
+    
     run(arg, background, argn, history, historyCnt);
   }
 }
@@ -240,7 +245,7 @@ int main(void) {
     if (argn == 0){
       continue;
     }
-  
+    
     loop(buffer,history,&historyCnt);
   }
   return 0;
