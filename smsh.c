@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define BUFSIZE 1024
 #define WORD 128
@@ -16,6 +17,7 @@ void historyNum(char* arg[], int argn, int background, char* history[], int* his
 void run(char* arg[], int background, int argn, char* history[],  int* historyCnt);
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt);
 void loop(char buffer[], int background, char* history[], int* historyCnt);
+void isRedirect(char* arg[], int argn);
 
 void fatal(const char *str, int errcode){
   perror(str);
@@ -87,6 +89,54 @@ void historyNum(char* arg[], int argn, int background, char* history[], int* his
   }
   else{
     printf("too many argument");
+  }
+}
+
+void isRedirect(char* arg[], int argn){
+  int fd;
+  for(int i = 0; i < argn; i++){
+    if(strcmp(arg[i],">")){
+      if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
+        fatal("redirect open error", 1);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+      arg[i] = '\0';
+      break;
+    }
+    else if(strcmp(arg[i],">>")){
+      if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_APPEND, 0644)) < 0){
+        fatal("redirect open error", 1);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+      arg[i] = '\0';
+      break;      
+    }
+    else if(strcmp(arg[i],"<")){
+      if((fd = open(arg[i+1], O_WRONLY | O_CREAT, 0644)) < 0){
+        fatal("redirect open error", 1);
+      }
+      dup2(fd, STDIN_FILENO);
+      close(fd);
+      arg[i] = '\0';
+      break;      
+    }
+    else if(strcmp(arg[i],"<<")){
+      
+    }
+    else if(strcmp(arg[i],"2>")){
+      if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
+        fatal("redirect open error", 1);
+      }
+      dup2(fd, STDERR_FILENO);
+      close(fd);
+      arg[i] = '\0';
+      break;      
+    }
+    else if(strcmp(arg[i],">|")){
+      
+    }
   }
 }
 
