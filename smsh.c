@@ -104,7 +104,6 @@ void isRedirect(char* arg[], int argn){
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
-      printf("arg[%d] = arg[%s], arg[%d] = arg[%s]", i, arg[i], i+1, arg[i+1]);
       arg[i] = NULL;
       break;
     }
@@ -147,7 +146,7 @@ void isRedirect(char* arg[], int argn){
 int run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
   pid_t pid;
   int status;
-  char* ptr;
+
   if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
     return 0;
@@ -167,7 +166,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
   }
   else{
     if(background == 0){
-      wait(&status);
+      waitpid(pid ,&status, 0);
     }
     else {
       waitpid(pid,&status,WNOHANG);
@@ -180,17 +179,14 @@ void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
   char* arg[WORD];
   char* newArg[WORD];
 
-  memset(arg,'\0',sizeof(arg));
   memset(newArg,'\0',sizeof(arg));
-
-  int argn = 0;
   int newArgn = 0;
 
   newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
   
   for(int i = 0; i < newArgn; i++){
     memset(arg,'\0',sizeof(arg));
-    argn = 0;
+    int argn = 0;
     argn = parsing(newArg[i], " \t\r\n", arg, argn);
     run(arg, background, argn, history, historyCnt);
   }
