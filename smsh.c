@@ -16,7 +16,7 @@ int isBackground(char* buffer);
 void cdCommand(char* arg[], int argn);
 void historyCmd(char* arg[], int argn, char* history[]);
 void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* noClobber);
-void isRedirect(char* arg[], int argn);
+int isRedirect(char* arg[], int argn, int noClobber);
 int run(char* arg[], int background, int argn, char* history[],  int* historyCnt, int* noClobber);
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt, int* noClobber);
 void loop(char buffer[], char* history[], int* historyCnt, int* noClobber);
@@ -98,16 +98,21 @@ void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* no
   }
 }
 
-void isRedirect(char* arg[], int argn){
+int isRedirect(char* arg[], int argn, int noClobber){
   int fd;
   for(int i = 0; i < argn; i++){
     if(strcmp(arg[i],">") == 0){
+      if((access(arg[i+1], F_OK) == 0) && noClobber){
+        perror("cannot overite existing file");
+        return 1;
+      }
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
         fatal("redirect > open error", 1);
       }
       dup2(fd, STDOUT_FILENO);
       close(fd);
       arg[i] = NULL;
+    
       break;
     }
     else if(strcmp(arg[i],">>") == 0){
@@ -141,30 +146,58 @@ void isRedirect(char* arg[], int argn){
       break;      
     }
     else if(strcmp(arg[i],">|") == 0){
-      
+      if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
+        fatal("redirect > open error", 1);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+      arg[i] = NULL;
+      break;
+    }
+  }
+  return 0;
+}
+void setNoClobber(char* arg[], int argn, int* noClobber){
+  if (argn == 2){
+    if (strcmp(arg[1], "+C") == 0){
+      *noClobber = 1;
+      printf("noclobber : %d\n", *noClobber);
+    }
+    else if (strcmp(arg[1], "-C") == 0){
+      *noClobber = 0;
+      printf("noclobber : %d\n", *noClobber);
+    }
+    else{
+      perror("set [+C/-C]");
+    }
+  }
+  else if (argn == 3){
+    if (strcmp(arg[2],"noclobber") == 0){
+      if(strcmp(arg[1],"+o") == 0){
+        *noClobber = 1;
+        printf("noclobber : %d\n", *noClobber);
+      }
+      else if(strcmp(arg[1],"-o") == 0){
+        *noClobber = 0;
+        printf("noclobber : %d\n", *noClobber);
+      }
+      else{
+        perror("set [+o/-o] noclobber");
+      }
+    }
+    else{
+      perror("set [+o/-o] noclobber");
     }
   }
 }
-void setNoClobber(char* arg[], int argn, int* noClobber){
-  if (strcmp(arg[1],"+o") == 0){
-    *noClobber = 1;
-    printf("noclobber : %d\n", *noClobber);
-  }
-  else if (strcmp(arg[1],"-o") == 0){
-    *noClobber = 0;
-    printf("noclobber : %d\n", *noClobber);
-  }
-  else {
-    perror("set [+o/-o] noclobber");
-  }
-}
+
 int run(char* arg[], int background, int argn, char* history[],  int* historyCnt, int* noClobber){
   pid_t pid;
   int status;
   if (argn == 0){
     return 0;
   }
-  if((strcmp(arg[0],"set") == 0) && (strcmp(arg[2],"noclobber") == 0) && argn == 3){
+  if((strcmp(arg[0],"set") == 0)){
     setNoClobber(arg, argn, noClobber);
     return 0;
   }
@@ -176,7 +209,9 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
     fatal("fork error",1);
   }
   else if(pid == 0){
-    isRedirect(arg, argn);
+    if(isRedirect(arg, argn, *noClobber)){
+      return 0;
+    }
     if(strcmp(arg[0],"history") == 0){
       historyCmd(arg, argn, history);
     }
