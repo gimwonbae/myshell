@@ -15,11 +15,12 @@ int parsing(char buffer[], char* delimiter, char* arg[], int argn);
 int isBackground(char* buffer);
 void cdCommand(char* arg[], int argn);
 void historyCmd(char* arg[], int argn, char* history[]);
-void historyNum(char* arg[], int argn, char* history[], int* historyCnt);
-int run(char* arg[], int background, int argn, char* history[],  int* historyCnt);
-void multiCmd(char buffer[], int background, char* history[], int* historyCnt);
-void loop(char buffer[], char* history[], int* historyCnt);
+void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* noClobber);
 void isRedirect(char* arg[], int argn);
+int run(char* arg[], int background, int argn, char* history[],  int* historyCnt, int* noClobber);
+void multiCmd(char buffer[], int background, char* history[], int* historyCnt, int* noClobber);
+void loop(char buffer[], char* history[], int* historyCnt, int* noClobber);
+void setNoClobber(char* arg[], int argn, int* noClobber);
 
 void fatal(const char *str, int errcode){
   perror(str);
@@ -53,11 +54,11 @@ void cdCommand(char* arg[], int argn){
   }
   else if(argn == 2){
     if(chdir(arg[1]) == -1){
-      printf("%s : No such file or directory\n", arg[1]);
+      perror("No such file or directory\n");
     }
   }
   else{
-    printf("too many argument\n");
+    perror("too many argument\n");
   }
 }
 
@@ -68,32 +69,32 @@ void historyCmd(char* arg[], int argn, char* history[]){
     }
   }
   else{
-    printf("too many argument");
+    perror("too many argument");
   }
 }
 
-void historyNum(char* arg[], int argn, char* history[], int* historyCnt){
+void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* noClobber){
   if(argn == 1){
     arg[0]++;
     if(atoi(arg[0]) != 0){
       (*historyCnt)--;
       if(atoi(arg[0]) > *historyCnt){
-        printf("not found\n");
+        perror("not found\n");
       }
       else{
         char* record = (char *)malloc(sizeof(char) * strlen(history[atoi(arg[0])-1]) + 1);
         memset(record,'\0',(sizeof(char) * strlen(history[atoi(arg[0])-1]) + 1));
         strcpy(record,history[atoi(arg[0])-1]);
-        loop(history[atoi(arg[0])-1], history, historyCnt);
+        loop(history[atoi(arg[0])-1], history, historyCnt, noClobber);
         strcpy(history[atoi(arg[0])-1],record);
       }
     }
     else{
-      printf("should !number \n");
+      perror("should !number \n");
     }
   }
   else{
-    printf("too many argument");
+    perror("too many argument");
   }
 }
 
@@ -144,14 +145,30 @@ void isRedirect(char* arg[], int argn){
     }
   }
 }
-
-int run(char* arg[], int background, int argn, char* history[],  int* historyCnt){
+void setNoClobber(char* arg[], int argn, int* noClobber){
+  if (strcmp(arg[1],"+o") == 0){
+    *noClobber = 1;
+    printf("noclobber : %d\n", *noClobber);
+  }
+  else if (strcmp(arg[1],"-o") == 0){
+    *noClobber = 0;
+    printf("noclobber : %d\n", *noClobber);
+  }
+  else {
+    perror("set [+o/-o] noclobber");
+  }
+}
+int run(char* arg[], int background, int argn, char* history[],  int* historyCnt, int* noClobber){
   pid_t pid;
   int status;
   if (argn == 0){
     return 0;
   }
-  if(strcmp(arg[0],"cd") == 0){
+  if((strcmp(arg[0],"set") == 0) && (strcmp(arg[2],"noclobber") == 0) && argn == 3){
+    setNoClobber(arg, argn, noClobber);
+    return 0;
+  }
+  else if(strcmp(arg[0],"cd") == 0){
     cdCommand(arg, argn);
     return 0;
   }
@@ -164,7 +181,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
       historyCmd(arg, argn, history);
     }
     else if(arg[0] == strchr(arg[0], '!')){
-      historyNum(arg, argn, history, historyCnt);
+      historyNum(arg, argn, history, historyCnt, noClobber);
     }
     execvp(arg[0],arg);
   }
@@ -179,7 +196,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
   return 0;
 }
 
-void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
+void multiCmd(char buffer[], int background, char* history[], int* historyCnt, int* noClobber){
   char* arg[WORD];
   char* newArg[WORD];
 
@@ -193,11 +210,11 @@ void multiCmd(char buffer[], int background, char* history[], int* historyCnt){
     int argn = 0;
     argn = parsing(newArg[i], " \t\r\n", arg, argn);
     
-    run(arg, background, argn, history, historyCnt);
+    run(arg, background, argn, history, historyCnt, noClobber);
   }
 }
 
-void loop(char buffer[], char* history[], int* historyCnt){
+void loop(char buffer[], char* history[], int* historyCnt, int* noClobber){
   char* arg[WORD];
 
   int argn = 0;
@@ -214,12 +231,12 @@ void loop(char buffer[], char* history[], int* historyCnt){
   int background = isBackground(buffer);
 
   if(strchr(buffer, ';')){
-    multiCmd(buffer,background,history, historyCnt);
+    multiCmd(buffer,background,history, historyCnt, noClobber);
   }
 
   else{
     argn = parsing(buffer, " \t\r\n", arg, argn);
-    run(arg, background, argn, history, historyCnt);
+    run(arg, background, argn, history, historyCnt, noClobber);
   }
 }
 
@@ -229,6 +246,7 @@ int main(void) {
   char *history[BUFSIZE];
   char* arg[WORD];
   int historyCnt = 0;
+  int noClobber = 0;
 
   while (1) {
     int background = 0;
@@ -245,8 +263,7 @@ int main(void) {
     if (argn == 0){
       continue;
     }
-    
-    loop(buffer,history,&historyCnt);
+    loop(buffer,history,&historyCnt,&noClobber);
   }
   return 0;
 }
