@@ -133,9 +133,6 @@ int isRedirect(char* arg[], int argn, int noClobber){
       arg[i] = NULL;
       break;      
     }
-    else if(strcmp(arg[i],"<<") == 0){
-      
-    }
     else if(strcmp(arg[i],"2>") == 0){
       if((fd = open(arg[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0){
         fatal("redirect 2> open error", 1);
