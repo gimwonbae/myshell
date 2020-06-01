@@ -16,7 +16,7 @@ int isBackground(char* buffer);
 void cdCommand(char* arg[], int argn);
 void historyCmd(char* arg[], int argn, char* history[]);
 void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* noClobber);
-int isRedirect(char* arg[], int argn, int noClobber);
+int isRedirect(char* arg[], int *argn, int noClobber);
 int run(char* arg[], int background, int argn, char* history[],  int* historyCnt, int* noClobber);
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt, int* noClobber);
 void loop(char buffer[], char* history[], int* historyCnt, int* noClobber);
@@ -98,9 +98,9 @@ void historyNum(char* arg[], int argn, char* history[], int* historyCnt, int* no
   }
 }
 
-int isRedirect(char* arg[], int argn, int noClobber){
+int isRedirect(char* arg[], int *argn, int noClobber){
   int fd;
-  for(int i = 0; i < argn; i++){
+  for(int i = 0; i < *argn; i++){
     if(strcmp(arg[i],">") == 0){
       if((access(arg[i+1], F_OK) == 0) && noClobber){
         perror("cannot overite existing file");
@@ -112,7 +112,7 @@ int isRedirect(char* arg[], int argn, int noClobber){
       dup2(fd, STDOUT_FILENO);
       close(fd);
       arg[i] = NULL;
-    
+      *argn = *argn - 2;
       break;
     }
     else if(strcmp(arg[i],">>") == 0){
@@ -122,6 +122,7 @@ int isRedirect(char* arg[], int argn, int noClobber){
       dup2(fd, STDOUT_FILENO);
       close(fd);
       arg[i] = NULL;
+      *argn = *argn - 2;
       break;      
     }
     else if(strcmp(arg[i],"<") == 0){
@@ -131,6 +132,7 @@ int isRedirect(char* arg[], int argn, int noClobber){
       dup2(fd, STDIN_FILENO);
       close(fd);
       arg[i] = NULL;
+      *argn = *argn - 2;
       break;      
     }
     else if(strcmp(arg[i],"2>") == 0){
@@ -140,6 +142,7 @@ int isRedirect(char* arg[], int argn, int noClobber){
       dup2(fd, STDERR_FILENO);
       close(fd);
       arg[i] = NULL;
+      *argn = *argn - 2;
       break;      
     }
     else if(strcmp(arg[i],">|") == 0){
@@ -149,6 +152,7 @@ int isRedirect(char* arg[], int argn, int noClobber){
       dup2(fd, STDOUT_FILENO);
       close(fd);
       arg[i] = NULL;
+      *argn = *argn - 2;
       break;
     }
   }
@@ -206,14 +210,16 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
     fatal("fork error",1);
   }
   else if(pid == 0){
-    if(isRedirect(arg, argn, *noClobber)){
-      return 0;
+    if(isRedirect(arg, &argn, *noClobber)){
+      exit(0);
     }
     if(strcmp(arg[0],"history") == 0){
       historyCmd(arg, argn, history);
+      exit(0);
     }
     else if(arg[0] == strchr(arg[0], '!')){
       historyNum(arg, argn, history, historyCnt, noClobber);
+      exit(0);
     }
     execvp(arg[0],arg);
   }
