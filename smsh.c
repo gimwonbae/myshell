@@ -21,6 +21,7 @@ int run(char* arg[], int background, int argn, char* history[],  int* historyCnt
 void multiCmd(char buffer[], int background, char* history[], int* historyCnt, int* noClobber);
 void loop(char buffer[], char* history[], int* historyCnt, int* noClobber);
 void setNoClobber(char* arg[], int argn, int* noClobber);
+void multiPipe(char buffer[], int background, char* history[], int* historyCnt, int* noClobber);
 
 void fatal(const char *str, int errcode){
   perror(str);
@@ -244,11 +245,68 @@ void multiCmd(char buffer[], int background, char* history[], int* historyCnt, i
   newArgn = parsing(buffer, "\t\r\n;", newArg, newArgn);
   
   for(int i = 0; i < newArgn; i++){
-    memset(arg,'\0',sizeof(arg));
-    int argn = 0;
-    argn = parsing(newArg[i], " \t\r\n", arg, argn);
-    
-    run(arg, background, argn, history, historyCnt, noClobber);
+    if (strchr(newArg[i], '|')){
+      multiPipe(newArg[i], background, history, historyCnt, noClobber);
+    }
+    else{
+      memset(arg,'\0',sizeof(arg));
+      int argn = 0;
+      argn = parsing(newArg[i], " \t\r\n", arg, argn);
+      run(arg, background, argn, history, historyCnt, noClobber);
+    }
+  }
+}
+
+void multiPipe(char buffer[], int background, char* history[], int* historyCnt, int* noClobber){
+  char* arg[WORD];
+  char* newArg[WORD];
+  memset(arg,'\0',sizeof(arg));
+  memset(newArg,'\0',sizeof(arg));
+
+  int argn = 0;
+  int newArgn = 0;
+
+  int p[2];
+  pid_t pid;
+  int status;
+  int in = 0;
+
+  newArgn = parsing(buffer, "\t\r\n|", newArg, newArgn);
+  for(int i = 0;  i < newArgn ; i++){
+    pipe(p);
+    if ((pid = fork()) == -1){
+      fatal("fork error",1);
+    }
+    else if (pid == 0){
+      close(p[0]);
+      dup2(in, STDIN_FILENO);
+      if (newArg[i+1] != NULL){
+        dup2(p[1], STDOUT_FILENO);
+      }
+      argn = parsing(newArg[i], " \t\r\n", arg, argn);
+      if((strcmp(arg[0],"set") == 0)){
+        setNoClobber(arg, argn, noClobber);
+        exit(0);
+      }
+      else if(strcmp(arg[0],"cd") == 0){
+        cdCommand(arg, argn);
+        exit(0);
+      }
+      else if(strcmp(arg[0],"history") == 0){
+        historyCmd(arg, argn, history);
+        exit(0);
+      }
+      else if(arg[0] == strchr(arg[0], '!')){
+        historyNum(arg, argn, history, historyCnt, noClobber);
+        exit(0);
+      }
+      execvp(arg[0],arg);
+    }
+    else{
+      wait(NULL);
+      close(p[1]);
+      in = p[0];
+    }
   }
 }
 
@@ -271,7 +329,9 @@ void loop(char buffer[], char* history[], int* historyCnt, int* noClobber){
   if(strchr(buffer, ';')){
     multiCmd(buffer,background,history, historyCnt, noClobber);
   }
-
+  else if (strchr(buffer, '|')){
+    multiPipe(buffer, background, history, historyCnt, noClobber);
+  }
   else{
     argn = parsing(buffer, " \t\r\n", arg, argn);
     run(arg, background, argn, history, historyCnt, noClobber);
