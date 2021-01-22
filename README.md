@@ -1,11 +1,10 @@
 # myshell
 
-* background (&)
-* Multipipe (cat abc | wc | wc)
-* Multicommand (cd abc ; ls)
-* History (!{number}, history)
-* Change Directory
-* Redirection (>, >>, <, 2>, >|)
-* noclobber (set [+C/-C], set [+o/-o] noclobber)
+-foreground and background execution (&)
+-multiple commands separated by semicolons
+-history command
+-shell redirection (>,>>,>|,<) include noColobber option
+-multiple pipe
+-cd command
 
 [More detail](https://github.com/waristo/myshell/blob/master/README.pdf)
