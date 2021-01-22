@@ -7,3 +7,5 @@
 * Change Directory
 * Redirection (>, >>, <, 2>, >|)
 * noclobber (set [+C/-C], set [+o/-o] noclobber)
+
+[More detail](https://github.com/waristo/myshell/blob/master/README.pdf)
